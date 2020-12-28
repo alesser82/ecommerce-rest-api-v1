@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\ProductCategory;
+use App\Models\Category;
 
 class Product extends Model
 {
@@ -18,7 +19,8 @@ class Product extends Model
     protected $fillable = [
         'name',
         'description',
-        'price'
+        'price',
+        'stock'
     ];
 
     /**
@@ -26,6 +28,6 @@ class Product extends Model
      */
     public function categories()
     {
-        return $this->hasMany(ProductCategory::class);
+        return $this->hasMany(ProductCategory::class)->using(Category::class);
     }
 }

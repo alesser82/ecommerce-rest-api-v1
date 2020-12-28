@@ -4,10 +4,21 @@ namespace App\Http\Controllers\Category;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Category;
 
 final class Index extends Controller
 {
+    const COLUMN_IDENTIFIED = [
+        'id',
+        'name',
+        'slug',
+        'description',
+        'created_at',
+        'updated_at',
+        'products'
+    ];
+
     /**
      * Handle the incoming request.
      *
@@ -24,25 +35,75 @@ final class Index extends Controller
 
     private function getHandler($request)
     {
-        return Category::select($this->selectHandler($request))
-                ->orderBy($this->orderHandler($request), $this->sortHandler($request))
+        $selectedField = $this->selectHandler($request);
+
+        if (empty($selectedField)) {
+
+            return Category::with('products.product')
                 ->limit($this->limitHandler($request))
                 ->offset($this->offsetHandler($request))
                 ->get();
+
+        } else {
+
+            if (in_array('products', $selectedField)) {
+                return $this->selectWithProduct($request, $selectedField);
+            }
+
+            return Category::select($selectedField)
+                ->limit($this->limitHandler($request))
+                ->offset($this->offsetHandler($request))
+                ->get();
+                
+        }
+    }
+
+    private function selectWithProduct($request, $selectedField)
+    {
+        $data = DB::table('categories')
+        ->limit($this->limitHandler($request))
+        ->offset($this->offsetHandler($request))
+        ->get();
+
+        foreach ($data as $key => $value) {
+            
+            $data[$key]->products = DB::table('products')
+                                    ->select('products.*')
+                                    ->join(
+                                        'product_categories', 
+                                        'products.id', 
+                                        '=', 
+                                        'product_categories.product_id'
+                                    )->where('product_categories.category_id', '=', $value->id)
+                                    ->get();
+
+
+            foreach ($value as $key2 => $value2) {
+
+                if (in_array($key2, $selectedField)) {
+                    continue;
+                }
+
+                unset($data[$key]->{$key2});
+            }
+
+        }
+
+        return $data;
     }
 
     private function selectHandler($request)
     {
-        $columns = $this->getColumns();
+        $columns = self::COLUMN_IDENTIFIED;
 
         if (empty($request->select)) {
-            return $columns;
+            return null;
         }
 
         $selectRequest = explode(',', $request->select);
 
         if (count($selectRequest) > count($columns)) {
-            return $columns;
+            return null;
         }
 
         $selected = [];
@@ -58,22 +119,10 @@ final class Index extends Controller
 
         
         if (empty($selected)) {
-            return $columns;
+            return null;
         }
 
         return $selected;
-    }
-
-    private function getColumns()
-    {
-        return [
-            'id',
-            'name',
-            'slug',
-            'description',
-            'created_at',
-            'updated_at'
-        ];
     }
 
     private function limitHandler($request)
@@ -96,26 +145,26 @@ final class Index extends Controller
 
     private function orderHandler($request)
     {
-        $columns = $this->getColumns();
+        $columns = self::COLUMN_IDENTIFIED;
 
         $order = 'id';
 
-        if (empty($request->order) || !in_array($request->order, $columns)) {
+        if (empty($request->order_by) || !in_array($request->order_by, $columns)) {
             return $order;
         }
 
-        return $request->order;
+        return $request->order_by;
     }
 
     private function sortHandler($request)
     {
         $sort = 'asc';
 
-        if (empty($request->sort) || ( $request->sort !== 'asc' && $request->sort !== 'desc' ) ) {
+        if (empty($request->sort_by) || ( $request->sort_by !== 'asc' && $request->sort_by !== 'desc' ) ) {
             return $sort;
         }
 
-        return $request->sort;
+        return $request->sort_by;
     }
 
 }

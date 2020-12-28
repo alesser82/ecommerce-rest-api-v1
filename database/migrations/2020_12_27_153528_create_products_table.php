@@ -19,6 +19,7 @@ class CreateProductsTable extends Migration
             $table->string('slug')->unique();
             $table->text('description');
             $table->decimal('price');
+            $table->bigInteger('stock');
             $table->timestamps();
         });
     }

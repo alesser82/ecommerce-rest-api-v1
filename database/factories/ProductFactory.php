@@ -29,7 +29,8 @@ class ProductFactory extends Factory
             'name' => $name,
             'slug' => $slug,
             'description' => $this->faker->unique()->sentence(30),
-            'price' => rand(50000, 1000000)
+            'price' => rand(50000, 1000000),
+            'stock' => rand(1, 1000),
         ];
     }
 }

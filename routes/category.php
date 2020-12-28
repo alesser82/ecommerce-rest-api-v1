@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Category\Index;
+use App\Http\Controllers\Category\Store;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,5 +15,5 @@ use App\Http\Controllers\Category\Index;
 |
 */
 
-// Route::get('/', Index::class);
 Route::get('/', Index::class);
+Route::post('/', Store::class);
