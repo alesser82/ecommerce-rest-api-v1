@@ -49,7 +49,6 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::prefix('categories')
                 ->middleware('api')
-                // ->namespace('Category')
                 ->group(base_path('routes/category.php'));
         });
     }
@@ -62,7 +61,15 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            
+            return Limit::perMinute(10)->response(function () {
+                return response()->json([
+                    'status' => 'Too Many Requests',
+                    'message' => 'Too many attempts, please slow down the request.',
+                    'data' => null,
+                ], 429);
+            });
+            
         });
     }
 }
