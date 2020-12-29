@@ -27,41 +27,43 @@ final class Detail extends Controller
      */
     public function __invoke($id, Request $request)
     {
+        $input = $request->json()->all();
+        
         return response()->json([
             'status' => 'Ok',
-            'data' => $this->getHandler($request, $id),
-            'message' => 'Data has been processed.',
+            'data' => $this->getHandler($input, $id),
+            'message' => 'Item has been processed.',
         ]);
     }
 
-    private function getHandler($request, $id)
+    private function getHandler($input, $id)
     {
-        $selectedField = $this->selectHandler($request);
+        if (
+            array_key_exists('select', $input) && 
+            is_array($input['select']) && 
+            count($input['select']) > 0
+        ) {
 
-        if (empty($selectedField)) {
+            if (in_array('products', $input['select'])) {
+                return $this->selectWithProduct($input, $id);
+            }
 
-            return Category::with('products.product')
+            return Category::select($this->selectHandler($input, $id))
                 ->find($id);
 
         } else {
 
-            if (in_array('products', $selectedField)) {
-                return $this->selectWithProduct($request, $selectedField, $id);
-            }
-
-            return Category::select($selectedField)
+            return Category::with('products.product')
                 ->find($id);
-                
+
         }
     }
 
-    private function selectWithProduct($request, $selectedField, $id)
+    private function selectWithProduct($input, $id)
     {
         $data = DB::table('categories')
-        ->where('id', '=', $id)
-        ->limit($this->limitHandler($request))
-        ->offset($this->offsetHandler($request))
-        ->first();
+                    ->where('id', '=', $id)
+                    ->first();
 
         if (empty($data)) {
             return null;
@@ -74,44 +76,33 @@ final class Detail extends Controller
                                     'products.id', 
                                     '=', 
                                     'product_categories.product_id'
-                                )->where(
-                                    'product_categories.category_id', 
-                                    '=', 
-                                    $id
-                                )->get();
+                                )->where('product_categories.category_id', '=', $id)
+                                ->get();
 
         foreach ($data as $key => $value) {
             
-            if (in_array($key, $selectedField)) {
-                continue;
-            }
+            foreach ($value as $key2 => $value2) {
 
-            unset($data->{$key});
+                if (in_array($key2, $input['select'])) {
+                    continue;
+                }
+
+                unset($data->{$key2});
+            }
 
         }
 
         return $data;
     }
 
-    private function selectHandler($request)
+    private function selectHandler($input, $id)
     {
-        $columns = self::COLUMN_IDENTIFIED;
-
-        if (empty($request->select)) {
-            return null;
-        }
-
-        $selectRequest = explode(',', $request->select);
-
-        if (count($selectRequest) > count($columns)) {
-            return null;
-        }
 
         $selected = [];
 
-        foreach ($selectRequest as $key => $value) {
+        foreach ($input['select'] as $key => $value) {
 
-            if (!in_array($value, $columns)) {
+            if (!in_array($value, self::COLUMN_IDENTIFIED)) {
                 continue;
             }
 
@@ -120,52 +111,10 @@ final class Detail extends Controller
 
         
         if (empty($selected)) {
-            return null;
+            return self::COLUMN_IDENTIFIED;
         }
 
         return $selected;
-    }
-
-    private function limitHandler($request)
-    {
-        if (empty($request->limit) || intval($request->limit) > 100) {
-            return 100;
-        }
-
-        return intval($request->limit);
-    }
-
-    private function offsetHandler($request)
-    {
-        if (empty($request->start) || intval($request->start) > 100) {
-            return 0;
-        }
-
-        return intval($request->start);
-    }
-
-    private function orderHandler($request)
-    {
-        $columns = self::COLUMN_IDENTIFIED;
-
-        $order = 'id';
-
-        if (empty($request->order_by) || !in_array($request->order_by, $columns)) {
-            return $order;
-        }
-
-        return $request->order_by;
-    }
-
-    private function sortHandler($request)
-    {
-        $sort = 'asc';
-
-        if (empty($request->sort_by) || ( $request->sort_by !== 'asc' && $request->sort_by !== 'desc' ) ) {
-            return $sort;
-        }
-
-        return $request->sort_by;
     }
 
 }
