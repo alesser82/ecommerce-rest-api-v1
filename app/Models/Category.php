@@ -23,10 +23,21 @@ class Category extends Model
     ];
 
     /**
+     * Format date.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'created_at' => 'date:Y-m-d H:i:s',
+        'updated_at' => 'date:Y-m-d H:i:s',
+    ];
+
+    /**
      * Get all products.
      */
     public function products()
     {
         return $this->hasMany(ProductCategory::class);
     }
+
 }

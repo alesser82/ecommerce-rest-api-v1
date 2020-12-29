@@ -2,7 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Category\Index;
+use App\Http\Controllers\Category\Detail;
 use App\Http\Controllers\Category\Store;
+use App\Http\Controllers\Category\Update;
+use App\Http\Controllers\Category\Destroy;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,5 +18,8 @@ use App\Http\Controllers\Category\Store;
 |
 */
 
+Route::get('{id}', Detail::class);
+Route::put('{id}', Update::class);
+Route::delete('{id}', Destroy::class);
 Route::get('/', Index::class);
 Route::post('/', Store::class);

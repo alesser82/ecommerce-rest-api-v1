@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Models\Category;
 
-final class Store extends Controller
+final class Update extends Controller
 {
     /**
      * Handle the incoming request.
@@ -16,8 +16,17 @@ final class Store extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function __invoke(Request $request)
+    public function __invoke($id, Request $request)
     {
+        $data = Category::find($id);
+
+        if (empty($data)) {
+            return response()->json([
+                'status' => 'Page not found.',
+                'message' => 'Route not found for this item.'
+            ], 404);
+        }
+
         $input = $request->all();
 
         $validation = $this->validation($input);
@@ -26,9 +35,9 @@ final class Store extends Controller
             return response()->json($validation, 400);
         }
 
-        $input['slug'] = $this->slugHandler($input['name']);
+        $input['slug'] = $this->slugHandler($input['name'], $id);
 
-        return $this->createHandler($input);
+        return $this->updateHandler($input, $data);
 
     }
 
@@ -69,13 +78,13 @@ final class Store extends Controller
         ];
     }
 
-    private function slugHandler($name)
+    private function slugHandler($name, $id)
     {
         $slug = Str::slug($name, '-');
 
         $number = 1;
 
-        while ($this->countSlug($slug) > 0) {
+        while ($this->countSlug($slug, $id) > 0) {
 
             $number++;
 
@@ -86,28 +95,31 @@ final class Store extends Controller
         return $slug;
     }
 
-    private function countSlug($slug)
+    private function countSlug($slug, $id)
     {
-        return Category::where('slug', '=', $slug)
-                        ->count();
+        return Category::where([
+            ['slug', '=', $slug],
+            ['id', '!=', $id]
+        ])->count();
     }
 
-    private function createHandler($input)
+    private function updateHandler($input, $data)
     {
-        try {
+        $process = $data->update($input);
+
+        if ($process) {
 
             return response()->json([
                 'status' => 'Ok',
-                'data' => Category::create($input)
+                'message' => 'Item has been updated.',
+                'data' => $process
             ]);
 
-        } catch (\Throwable $th) {
-
-            return response()->json([
-                'status' => 'Server Error',
-                'message' => 'Server is not ready.'
-            ], 500);
-
         }
+
+        return response()->json([
+            'status' => 'Server Error',
+            'message' => 'Server is not ready.'
+        ], 500);
     }
 }

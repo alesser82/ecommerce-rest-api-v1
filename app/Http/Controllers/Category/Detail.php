@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Category;
 
-final class Index extends Controller
+final class Detail extends Controller
 {
     const COLUMN_IDENTIFIED = [
         'id',
@@ -25,68 +25,68 @@ final class Index extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function __invoke(Request $request)
+    public function __invoke($id, Request $request)
     {
         return response()->json([
             'status' => 'Ok',
-            'data' => $this->getHandler($request),
+            'data' => $this->getHandler($request, $id),
             'message' => 'Data has been processed.',
         ]);
     }
 
-    private function getHandler($request)
+    private function getHandler($request, $id)
     {
         $selectedField = $this->selectHandler($request);
 
         if (empty($selectedField)) {
 
             return Category::with('products.product')
-                ->limit($this->limitHandler($request))
-                ->offset($this->offsetHandler($request))
-                ->get();
+                ->find($id);
 
         } else {
 
             if (in_array('products', $selectedField)) {
-                return $this->selectWithProduct($request, $selectedField);
+                return $this->selectWithProduct($request, $selectedField, $id);
             }
 
             return Category::select($selectedField)
-                ->limit($this->limitHandler($request))
-                ->offset($this->offsetHandler($request))
-                ->get();
+                ->find($id);
                 
         }
     }
 
-    private function selectWithProduct($request, $selectedField)
+    private function selectWithProduct($request, $selectedField, $id)
     {
         $data = DB::table('categories')
+        ->where('id', '=', $id)
         ->limit($this->limitHandler($request))
         ->offset($this->offsetHandler($request))
-        ->get();
+        ->first();
+
+        if (empty($data)) {
+            return null;
+        }
+
+        $data->products = DB::table('products')
+                                ->select('products.*')
+                                ->join(
+                                    'product_categories', 
+                                    'products.id', 
+                                    '=', 
+                                    'product_categories.product_id'
+                                )->where(
+                                    'product_categories.category_id', 
+                                    '=', 
+                                    $id
+                                )->get();
 
         foreach ($data as $key => $value) {
             
-            $data[$key]->products = DB::table('products')
-                                    ->select('products.*')
-                                    ->join(
-                                        'product_categories', 
-                                        'products.id', 
-                                        '=', 
-                                        'product_categories.product_id'
-                                    )->where('product_categories.category_id', '=', $value->id)
-                                    ->get();
-
-
-            foreach ($value as $key2 => $value2) {
-
-                if (in_array($key2, $selectedField)) {
-                    continue;
-                }
-
-                unset($data[$key]->{$key2});
+            if (in_array($key, $selectedField)) {
+                continue;
             }
+
+            unset($data->{$key});
 
         }
 
